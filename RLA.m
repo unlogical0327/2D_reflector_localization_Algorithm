@@ -36,7 +36,9 @@ colunm_x = 12;
 row_y = Table_size/colunm_x;
 Lidar_x=10;    % x coordinate of Lidar
 Lidar_y=0;    % y coordinate of Lidar
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Define simulation configuration here
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 list_source_flag=1;  % set the list flag to 0--read from file, 1--manually set the reflector location 2--generate 120x110 reflector array 2--generate from random location
 Prediction_flag=0;   % enable feature to calculate the location prediction after step 5
 %%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -44,14 +46,14 @@ Prediction_flag=0;   % enable feature to calculate the location prediction after
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 %% 1. Create/load the reflector position true table from reading CVS file/generating random list.
 if list_source_flag == 0 % read from file
-    fname = ['Reflector_Table_example'];
+    fname = ['Reflector_Table_example'];  % file only contains reference reflector location.
     raw_data = dlmread( fname, ' ', 3, 0)';
     for ii=1:length(raw_data)
         Reflector_ID(ii) = ii;
     Reflector_Table(1,Reflector_ID(ii))=cos(raw_data(1,ii)/180*pi)*raw_data(2,ii);   % generate reflector array x 
     Reflector_Table(2,Reflector_ID(ii))=sin(raw_data(1,ii)/180*pi)*raw_data(2,ii);   % generate reflector array y
     end
-elseif list_source_flag == 1 % manually set reflector location
+elseif list_source_flag == 1 % manually set reflector location as reference reflector distribution
     % input at least 3 points to calculate the robot location 
     % 45.0000 565.7  100
     % 45.0000 707.1  100
@@ -155,26 +157,38 @@ Lidar_trace=Lidar_update_xy;
 %% 5. Initialize the reflector table and find at least 2/3 reflectors: pick up at least 2/3 reflectors from the list(nearest distance or most distingushed).
 % --Select at least 3 reflectors to locate the robot
 % --Manually choose ix reflectors(ix nearest points)
-num_loc_ref=4;   % --define how many reflectors to be used.
+num_loc_ref=5;   % --define how many reflectors to be used.
 nearest_ID_en=0;   % --enable nearest ID selection?0-not enabled; 1-enabled
 
+if num_loc_ref>length(detected_ID)
+    error('defined reflector number is larger than detected relfectors')
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Option1: Load updated Lidar data
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 %[Lidar_Table1,Lidar_data1]=load_Lidar_data();
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Option2: Generate random displacement and load to system
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 %% ---- Loop starts from here ----
 %  set the loop number of simulation and generate random movement at each
 %  moment
 Loop_num=10;
 for ll=1:Loop_num     % simulation loop start from here!!!
-theta=randi(360)/180*pi
-dist=randi(500)
+theta=randi(360)/180*pi;  % define random rotation angle
+dist=randi(500);   % define random transition
 [Lidar_Table1,Lidar_data1]=simulate_lidar_movement(theta,dist);    %simulate random displacement
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % identify the reflectors
 [detected_ID1,detected_reflector1]=identify_reflector(amp_thres,angle_delta,distance_delta,Lidar_data1,Lidar_Table1);
 for i=1:num_loc_ref
     enabled_ID(i)=i;
     enabled_reflector(:,enabled_ID)=detected_reflector1(:,enabled_ID);  % read enabled ID from Lidar data
 end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Match the enabled reflectors in the reference reflectors
 [matched_en_reflector_ID1]=calc_match_distance(Reflector_Table,Reflector_ID,enabled_reflector,enabled_ID,thres_dist_match);
 %[matched_en_reflector_ID2]=calc_match_distance(Reflector_Table,Reflector_ID,detected_reflector1,detected_ID1,thres_dist_match);
